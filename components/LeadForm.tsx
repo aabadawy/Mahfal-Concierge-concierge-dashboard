@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronRight, Check, Copy, RefreshCw, Calendar, MapPin, Users, DollarSign } from 'lucide-react';
+import { signRequest } from '../utils/api';
 
 interface LeadFormProps {
   isOpen: boolean;
@@ -7,7 +8,6 @@ interface LeadFormProps {
 }
 
 const STORAGE_KEY = 'mahfal_draft_lead';
-const SUBMISSIONS_KEY = 'mahfal_submissions';
 
 const initialData = {
   occasionType: '',
@@ -80,30 +80,45 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
     if (canProceed()) setStep(s => s + 1);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canProceed()) return;
     setIsSubmitting(true);
-    
-    // Simulate API call and Save to LocalStorage for Admin Dashboard
-    setTimeout(() => {
-      const newSubmission = {
-        id: crypto.randomUUID(),
-        submittedAt: new Date().toISOString(),
-        status: 'new', // new, contacted, booked, archived
-        ...formData
-      };
 
-      try {
-        const existing = JSON.parse(localStorage.getItem(SUBMISSIONS_KEY) || '[]');
-        localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify([newSubmission, ...existing]));
-      } catch (e) {
-        console.error("Error saving submission", e);
+    // Prepare payload
+    const payload = {
+      ...formData,
+      submittedAt: new Date().toISOString(),
+      source: 'landing_page'
+    };
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://api.mahfal.com'; // Fallback or env
+      // NOTE: In a real app, do not expose secrets in client code. 
+      // This is for demonstration as requested. Valid for server-to-server or proxied requests.
+      const secret = import.meta.env.VITE_API_SECRET || 'demo_secret';
+
+      const headers = await signRequest(payload, secret);
+
+      const response = await fetch(`${baseUrl}/leads`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
       }
 
-      setIsSubmitting(false);
+      // Success
       setIsSuccess(true);
       localStorage.removeItem(STORAGE_KEY);
-    }, 1500);
+
+    } catch (e) {
+      console.error("Submission error", e);
+      alert("Something went wrong. Please try again or contact us directly.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -121,32 +136,32 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-      <div 
-        className="absolute inset-0 bg-brand-black/60 backdrop-blur-sm transition-opacity" 
-        onClick={onClose} 
+      <div
+        className="absolute inset-0 bg-brand-black/60 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
       />
-      
+
       {/* Modal Container */}
       <div className="relative w-full max-w-lg bg-brand-offWhite rounded-none shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="flex-none p-6 border-b border-brand-black/5 bg-white rounded-none">
-           <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-brand-black font-semibold text-xl">Mahfal Concierge</h2>
-                {!isSuccess && (
-                  <div className="mt-2 space-y-1">
-                     <p className="text-brand-black/80 text-sm leading-snug">
-                       We'll match you with a space & suppliers <span className="font-semibold text-brand-red">within 24 hours</span>.
-                     </p>
-                     <p className="text-brand-black/40 text-xs uppercase tracking-wide pt-1">Step {step} of 4 • ~2 mins</p>
-                  </div>
-                )}
-              </div>
-              <button onClick={onClose} className="p-2 -mr-2 -mt-2 hover:bg-black/5 rounded-full text-brand-black/50 hover:text-brand-black transition-colors">
-                <X size={20} />
-              </button>
-           </div>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-brand-black font-semibold text-xl">Mahfal Concierge</h2>
+              {!isSuccess && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-brand-black/80 text-sm leading-snug">
+                    We'll match you with a space & suppliers <span className="font-semibold text-brand-red">within 24 hours</span>.
+                  </p>
+                  <p className="text-brand-black/40 text-xs uppercase tracking-wide pt-1">Step {step} of 4 • ~2 mins</p>
+                </div>
+              )}
+            </div>
+            <button onClick={onClose} className="p-2 -mr-2 -mt-2 hover:bg-black/5 rounded-full text-brand-black/50 hover:text-brand-black transition-colors">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -160,7 +175,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
               <p className="text-brand-black/60 max-w-xs">
                 We'll contact you shortly with a curated shortlist for your <strong>{formData.occasionType}</strong>.
               </p>
-              
+
               <div className="w-full bg-white border border-black/5 rounded-none p-6 text-left mt-8 shadow-sm">
                 <h4 className="text-xs uppercase tracking-widest text-brand-black/40 mb-4 font-bold">Request Summary</h4>
                 <div className="space-y-3 text-sm text-brand-black/80">
@@ -169,7 +184,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                   <div className="flex justify-between"><span className="text-black/40">Guests</span> <span>{formData.guests}</span></div>
                   <div className="flex justify-between"><span className="text-black/40">Budget</span> <span>{formData.budgetRange}</span></div>
                 </div>
-                
+
                 <div className="mt-6 pt-6 border-t border-black/5">
                   <pre className="text-[10px] text-black/50 overflow-x-auto bg-gray-50 p-2 rounded-none">
                     {JSON.stringify(formData, null, 2)}
@@ -188,7 +203,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
             </div>
           ) : (
             <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-              
+
               {/* STEP 1: Occasion */}
               {step === 1 && (
                 <div className="space-y-6">
@@ -199,11 +214,10 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                         <button
                           key={occ}
                           onClick={() => update('occasionType', occ)}
-                          className={`py-3 px-4 text-sm border rounded-none transition-all ${
-                            formData.occasionType === occ 
-                              ? 'border-brand-red bg-brand-red/5 text-brand-red font-medium' 
-                              : 'border-black/10 bg-white text-black/60 hover:border-black/30'
-                          }`}
+                          className={`py-3 px-4 text-sm border rounded-none transition-all ${formData.occasionType === occ
+                            ? 'border-brand-red bg-brand-red/5 text-brand-red font-medium'
+                            : 'border-black/10 bg-white text-black/60 hover:border-black/30'
+                            }`}
                         >
                           {occ}
                         </button>
@@ -213,7 +227,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
 
                   <div className="space-y-3">
                     <label className="text-sm font-medium text-brand-black">Where?</label>
-                    <select 
+                    <select
                       value={formData.locationArea}
                       onChange={(e) => update('locationArea', e.target.value)}
                       className="w-full p-3 bg-white border border-black/10 rounded-none focus:border-brand-black outline-none text-brand-black"
@@ -230,14 +244,14 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                   <div className="space-y-3">
                     <label className="text-sm font-medium text-brand-black">When?</label>
                     <div className="flex gap-3">
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         disabled={formData.isFlexibleDate}
                         value={formData.date}
                         onChange={(e) => update('date', e.target.value)}
                         className={`flex-1 p-3 bg-white border border-black/10 rounded-none focus:border-brand-black outline-none text-brand-black ${formData.isFlexibleDate ? 'opacity-50' : ''}`}
                       />
-                      <button 
+                      <button
                         onClick={() => update('isFlexibleDate', !formData.isFlexibleDate)}
                         className={`px-4 text-xs border rounded-none whitespace-nowrap ${formData.isFlexibleDate ? 'bg-brand-black text-white border-brand-black' : 'bg-white border-black/10 text-black/60'}`}
                       >
@@ -256,8 +270,8 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                       <label className="text-sm font-medium text-brand-black">Guests</label>
                       <span className="text-brand-red font-semibold">{formData.guests}</span>
                     </div>
-                    <input 
-                      type="range" 
+                    <input
+                      type="range"
                       min="10" max="500" step="10"
                       value={formData.guests}
                       onChange={(e) => update('guests', parseInt(e.target.value))}
@@ -276,11 +290,10 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                         <button
                           key={b}
                           onClick={() => update('budgetRange', b)}
-                          className={`py-3 px-4 text-sm border rounded-none transition-all ${
-                            formData.budgetRange === b
-                              ? 'border-brand-black bg-brand-black text-white' 
-                              : 'border-black/10 bg-white text-black/60 hover:border-black/30'
-                          }`}
+                          className={`py-3 px-4 text-sm border rounded-none transition-all ${formData.budgetRange === b
+                            ? 'border-brand-black bg-brand-black text-white'
+                            : 'border-black/10 bg-white text-black/60 hover:border-black/30'
+                            }`}
                         >
                           {b}
                         </button>
@@ -295,11 +308,10 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                         <button
                           key={p}
                           onClick={() => update('venuePreference', p)}
-                          className={`flex-1 py-3 text-sm border rounded-none transition-all ${
-                            formData.venuePreference === p
-                              ? 'border-brand-black bg-white text-brand-black font-semibold' 
-                              : 'border-black/10 bg-white text-black/60'
-                          }`}
+                          className={`flex-1 py-3 text-sm border rounded-none transition-all ${formData.venuePreference === p
+                            ? 'border-brand-black bg-white text-brand-black font-semibold'
+                            : 'border-black/10 bg-white text-black/60'
+                            }`}
                         >
                           {p}
                         </button>
@@ -319,11 +331,10 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                         <button
                           key={s}
                           onClick={() => toggleArray('suppliers', s)}
-                          className={`py-2 px-3 text-xs border rounded-none transition-all ${
-                            formData.suppliers.includes(s)
-                              ? 'border-brand-red bg-brand-red text-white' 
-                              : 'border-black/10 bg-white text-black/60 hover:border-black/30'
-                          }`}
+                          className={`py-2 px-3 text-xs border rounded-none transition-all ${formData.suppliers.includes(s)
+                            ? 'border-brand-red bg-brand-red text-white'
+                            : 'border-black/10 bg-white text-black/60 hover:border-black/30'
+                            }`}
                         >
                           {s}
                         </button>
@@ -338,11 +349,10 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                         <button
                           key={v}
                           onClick={() => toggleArray('vibe', v)}
-                          className={`py-2 px-3 text-xs border rounded-none transition-all ${
-                            formData.vibe.includes(v)
-                              ? 'border-brand-black bg-brand-black text-white' 
-                              : 'border-black/10 bg-white text-black/60 hover:border-black/30'
-                          }`}
+                          className={`py-2 px-3 text-xs border rounded-none transition-all ${formData.vibe.includes(v)
+                            ? 'border-brand-black bg-brand-black text-white'
+                            : 'border-black/10 bg-white text-black/60 hover:border-black/30'
+                            }`}
                         >
                           {v}
                         </button>
@@ -368,8 +378,8 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-xs font-medium text-brand-black mb-1">Full Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={formData.fullName}
                         onChange={(e) => update('fullName', e.target.value)}
                         className="w-full p-3 bg-white border-b border-black/20 focus:border-brand-black outline-none text-brand-black placeholder:text-black/20"
@@ -378,17 +388,17 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-brand-black mb-1">Phone Number</label>
-                      <input 
-                        type="tel" 
+                      <input
+                        type="tel"
                         value={formData.phone}
                         onChange={(e) => update('phone', e.target.value)}
                         className="w-full p-3 bg-white border-b border-black/20 focus:border-brand-black outline-none text-brand-black placeholder:text-black/20"
                         placeholder="+1 (555) 000-0000"
                       />
                     </div>
-                     <div className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
                         id="wa"
                         checked={formData.isWhatsapp}
                         onChange={(e) => update('isWhatsapp', e.target.checked)}
@@ -398,8 +408,8 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-brand-black mb-1">Email (Optional)</label>
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         value={formData.email}
                         onChange={(e) => update('email', e.target.value)}
                         className="w-full p-3 bg-white border-b border-black/20 focus:border-brand-black outline-none text-brand-black placeholder:text-black/20"
@@ -410,7 +420,7 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
 
                   <div className="pt-4 border-t border-black/5">
                     <label className="flex items-start gap-3 cursor-pointer">
-                      <input 
+                      <input
                         type="checkbox"
                         checked={formData.consent}
                         onChange={(e) => update('consent', e.target.checked)}
@@ -435,15 +445,14 @@ export const LeadForm: React.FC<LeadFormProps> = ({ isOpen, onClose }) => {
             ) : (
               <div></div>
             )}
-            
-            <button 
+
+            <button
               onClick={step === 4 ? handleSubmit : handleNext}
               disabled={!canProceed() || isSubmitting}
-              className={`px-8 py-3 rounded-none font-medium transition-all flex items-center gap-2 ${
-                canProceed() && !isSubmitting
-                  ? 'bg-brand-red text-white hover:bg-red-600 shadow-md' 
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
+              className={`px-8 py-3 rounded-none font-medium transition-all flex items-center gap-2 ${canProceed() && !isSubmitting
+                ? 'bg-brand-red text-white hover:bg-red-600 shadow-md'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
             >
               {isSubmitting ? (
                 <>Processing...</>
