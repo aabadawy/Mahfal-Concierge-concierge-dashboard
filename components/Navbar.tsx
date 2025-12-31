@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { Menu, X, Lock } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 interface NavbarProps {
   scrolled: boolean;
   onOpenForm: () => void;
-  onOpenAdmin: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ scrolled, onOpenForm, onOpenAdmin }) => {
+export const Navbar: React.FC<NavbarProps> = ({ scrolled, onOpenForm }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Links ordered to match the vertical flow of the landing page
@@ -20,13 +19,12 @@ export const Navbar: React.FC<NavbarProps> = ({ scrolled, onOpenForm, onOpenAdmi
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
-        scrolled 
-          ? 'bg-brand-black/90 backdrop-blur-md border-white/10 py-4' 
-          : 'bg-transparent border-transparent py-6'
-      }`}>
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${scrolled
+        ? 'bg-brand-black/90 backdrop-blur-md border-white/10 py-4'
+        : 'bg-transparent border-transparent py-6'
+        }`}>
         <div className="max-w-[1240px] mx-auto px-6 md:px-12 flex items-center justify-between">
-          
+
           {/* Logo */}
           <div className="flex flex-col">
             <a href="#hero" className="text-2xl font-bold tracking-tight text-white font-sans">
@@ -40,9 +38,9 @@ export const Navbar: React.FC<NavbarProps> = ({ scrolled, onOpenForm, onOpenAdmi
           {/* Desktop Links */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/80">
             {navLinks.map((link) => (
-              <a 
-                key={link.label} 
-                href={link.href} 
+              <a
+                key={link.label}
+                href={link.href}
                 className="relative py-1 hover:text-white transition-colors group"
               >
                 {link.label}
@@ -53,16 +51,14 @@ export const Navbar: React.FC<NavbarProps> = ({ scrolled, onOpenForm, onOpenAdmi
 
           {/* CTA */}
           <div className="hidden md:flex items-center gap-6">
-             <button onClick={onOpenAdmin} className="text-white/20 hover:text-white transition-colors" title="Admin Dashboard">
-               <Lock size={16} />
-             </button>
-             <a href="#spaces" className="text-sm text-white hover:text-white/80 transition-colors">Explore</a>
-             <button 
-                onClick={onOpenForm}
-                className="px-5 py-2.5 bg-brand-red text-white text-sm font-medium rounded-none hover:bg-red-600 transition-colors"
-             >
-               Get Matched
-             </button>
+
+            <a href="#spaces" className="text-sm text-white hover:text-white/80 transition-colors">Explore</a>
+            <button
+              onClick={onOpenForm}
+              className="px-5 py-2.5 bg-brand-red text-white text-sm font-medium rounded-none hover:bg-red-600 transition-colors"
+            >
+              Get Matched
+            </button>
           </div>
 
           {/* Mobile Burger */}
@@ -80,25 +76,23 @@ export const Navbar: React.FC<NavbarProps> = ({ scrolled, onOpenForm, onOpenAdmi
           </button>
         </div>
         <div className="flex flex-col items-center gap-8 mt-12 text-xl font-light text-white">
-           {navLinks.map((link) => (
-              <a 
-                key={link.label} 
-                href={link.href} 
-                onClick={() => setMobileMenuOpen(false)}
-                className="hover:text-brand-red transition-colors"
-              >
-                {link.label}
-              </a>
-            ))}
-            <button onClick={() => { setMobileMenuOpen(false); onOpenAdmin(); }} className="text-sm text-white/50 hover:text-white flex items-center gap-2">
-              <Lock size={14} /> Admin
-            </button>
-            <button 
-              onClick={() => { setMobileMenuOpen(false); onOpenForm(); }}
-              className="mt-8 px-8 py-4 bg-brand-red text-white rounded-none w-full max-w-xs"
+          {navLinks.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              onClick={() => setMobileMenuOpen(false)}
+              className="hover:text-brand-red transition-colors"
             >
-              Get Matched
-            </button>
+              {link.label}
+            </a>
+          ))}
+
+          <button
+            onClick={() => { setMobileMenuOpen(false); onOpenForm(); }}
+            className="mt-8 px-8 py-4 bg-brand-red text-white rounded-none w-full max-w-xs"
+          >
+            Get Matched
+          </button>
         </div>
       </div>
     </>
